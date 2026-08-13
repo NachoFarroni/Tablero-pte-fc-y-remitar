@@ -106,6 +106,46 @@ body{font-family:var(--font-sans);background:var(--gray-50);color:var(--gray-800
 .colf-panel-amount{width:180px}
 .colf-clear{width:100%;background:var(--gray-100);border:none;border-radius:6px;padding:5px 6px;font-size:.7rem;font-weight:600;color:var(--navy);cursor:pointer;font-family:var(--font-sans)}
 .colf-clear:hover{background:var(--sky)}
+.colf-daterange{display:flex;flex-direction:column;gap:6px;width:170px}
+.colf-daterange label{font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--gray-600)}
+.colf-daterange input[type=date]{width:100%;border:1px solid var(--gray-200);border-radius:6px;padding:5px 6px;font-family:var(--font-sans);font-size:.75rem;color:var(--gray-800)}
+.colf-daterange input[type=date]:focus{outline:none;border-color:var(--blue)}
+.cliente-link{cursor:pointer;text-decoration:underline;text-decoration-color:transparent;transition:text-decoration-color .15s}
+.cliente-link:hover{text-decoration-color:var(--blue)}
+.view-toggle{display:flex;background:var(--gray-100);border-radius:var(--radius);padding:3px;gap:2px}
+.view-toggle button{background:none;border:none;cursor:pointer;font-family:var(--font-sans);font-size:.76rem;font-weight:600;color:var(--gray-600);padding:5px 11px;border-radius:6px}
+.view-toggle button.active{background:var(--white);color:var(--navy);box-shadow:var(--shadow)}
+.col-toggle-wrap{position:relative}
+.col-toggle-btn{display:inline-flex;align-items:center;gap:5px;padding:6px 11px;border-radius:var(--radius);border:1px solid var(--gray-200);background:var(--white);font-size:.76rem;font-weight:600;cursor:pointer;color:var(--gray-600);font-family:var(--font-sans)}
+.col-toggle-btn:hover{border-color:var(--blue-light);background:var(--sky)}
+.col-dropdown{position:absolute;right:0;top:calc(100% + 6px);background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);padding:8px;z-index:90;min-width:200px}
+.col-dropdown label{display:flex;align-items:center;gap:8px;padding:5px 9px;border-radius:6px;cursor:pointer;font-size:.78rem;color:var(--gray-800);font-family:var(--font-sans)}
+.col-dropdown label:hover{background:var(--gray-50)}
+.col-dropdown label.disabled{opacity:.5;cursor:not-allowed}
+.col-dropdown input[type=checkbox]{accent-color:var(--blue);width:13px;height:13px}
+.modal-overlay{position:fixed;inset:0;background:rgba(15,39,68,.55);display:flex;align-items:center;justify-content:center;z-index:200;padding:24px}
+.modal-card{background:var(--white);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);width:100%;max-width:760px;max-height:85vh;overflow-y:auto}
+.modal-header{background:var(--navy);padding:16px 22px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0}
+.modal-title{color:var(--white);font-size:1rem;font-weight:700}
+.modal-sub{color:var(--sky-dark);font-size:.75rem;margin-top:2px}
+.modal-close{background:rgba(255,255,255,.15);border:none;color:var(--white);width:28px;height:28px;border-radius:7px;cursor:pointer;font-size:1rem}
+.modal-close:hover{background:rgba(255,255,255,.25)}
+.modal-body{padding:20px 22px}
+.modal-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px}
+.modal-sum-card{background:var(--gray-50);border:1px solid var(--gray-200);border-radius:var(--radius);padding:10px 12px}
+.msc-label{font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--gray-600);margin-bottom:3px}
+.msc-value{font-family:var(--font-mono);font-size:.95rem;font-weight:700;color:var(--navy)}
+.modal-section{margin-bottom:18px}
+.modal-section-title{font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--navy);margin-bottom:7px;padding-bottom:5px;border-bottom:2px solid var(--sky)}
+.mini-table{width:100%;border-collapse:collapse;font-size:.73rem}
+.mini-table thead th{background:var(--navy-light);color:var(--white);padding:6px 8px;text-align:right;font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.mini-table thead th:first-child,.mini-table thead th:nth-child(2){text-align:left}
+.mini-table tbody td{padding:5px 8px;border-bottom:1px solid var(--gray-100);font-family:var(--font-mono);font-size:.72rem;text-align:right}
+.mini-table tbody td:first-child,.mini-table tbody td:nth-child(2){text-align:left;font-family:var(--font-sans)}
+.mini-table tbody tr:nth-child(even){background:var(--gray-50)}
+.mini-table tfoot td{padding:6px 8px;font-family:var(--font-mono);font-weight:700;background:var(--navy-mid);color:var(--white);text-align:right}
+.mini-table tfoot td:first-child{text-align:left}
+.empty-section{color:var(--gray-400);font-size:.76rem;padding:6px 0;font-style:italic}
 .colf-item{display:flex;align-items:center;gap:7px;padding:4px 5px;border-radius:5px;font-size:.75rem;color:var(--gray-800);font-family:var(--font-sans);cursor:pointer}
 .colf-item:hover{background:var(--gray-50)}
 .colf-item input{accent-color:var(--blue);width:13px;height:13px;flex-shrink:0}
@@ -286,7 +326,48 @@ function AmountFilter({value,onChange}){
   );
 }
 
-// Filtro estilo Excel: funnel con lista de checkboxes sobre los valores únicos de la columna.
+// Filtro de rango de fechas para columnas de tipo fecha: desde/hasta, inclusive.
+function DateRangeFilter({value,onChange}){
+  const[open,setOpen]=useState(false);
+  const ref=useRef();
+  useEffect(()=>{
+    if(!open)return;
+    const onDoc=e=>{if(ref.current&&!ref.current.contains(e.target))setOpen(false);};
+    document.addEventListener('mousedown',onDoc);
+    return()=>document.removeEventListener('mousedown',onDoc);
+  },[open]);
+  const active=!!(value.from||value.to);
+  return h('span',{className:'colf-wrap',ref,onClick:e=>e.stopPropagation()},
+    h('button',{className:'colf-btn'+(active?' active':''),onClick:()=>setOpen(o=>!o),title:'Filtrar por rango de fechas'},'▾'),
+    open&&h('div',{className:'colf-panel'},
+      h('div',{className:'colf-daterange'},
+        h('label',{},'Desde'),
+        h('input',{type:'date',value:value.from||'',onChange:e=>onChange({...value,from:e.target.value}),onClick:e=>e.stopPropagation()}),
+        h('label',{},'Hasta'),
+        h('input',{type:'date',value:value.to||'',onChange:e=>onChange({...value,to:e.target.value}),onClick:e=>e.stopPropagation()}),
+        active&&h('button',{className:'colf-clear',onClick:()=>onChange({from:'',to:''})},'Limpiar')
+      )
+    )
+  );
+}
+
+// Exporta a .xlsx exactamente las filas que se le pasen (ya filtradas/ordenadas).
+function exportToExcel(rows,filename){
+  const data=rows.map(r=>({
+    'Cliente':r.cliente,'Código':r.codigo,'Número':r.numero,
+    'Artículo / Descripción':r.descripcion||r.articulo||'',
+    'Importe + IVA (USD)':Number(r.importe.toFixed(2)),
+    'Fecha':fmtDate(r.fecha),'Fecha Vto. Origen':fmtDate(r.vencimientoOrigen),
+    'Observaciones':r.observaciones||'',
+  }));
+  const ws=XLSX.utils.json_to_sheet(data);
+  ws['!cols']=[{wch:32},{wch:12},{wch:10},{wch:34},{wch:16},{wch:12},{wch:16},{wch:34}];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,filename.slice(0,31));
+  XLSX.writeFile(wb,filename+'.xlsx');
+}
+
+
 function ColumnFilter({options,selected,onChange}){
   const[open,setOpen]=useState(false);
   const[q,setQ]=useState('');
@@ -325,26 +406,55 @@ function ColumnFilter({options,selected,onChange}){
   );
 }
 
-// Columnas de tipo checkbox: cada una define cómo se lee el valor a mostrar/filtrar/ordenar.
+// Columnas: cada una define cómo se lee (val), cómo se filtra (type) y cómo se dibuja la celda (render).
 const COLS_DEF=[
-  {k:'cliente',label:'Cliente',cls:'col-cliente',type:'checkbox',val:r=>r.cliente||'—'},
-  {k:'codigo',label:'Código',cls:'col-txt',type:'checkbox',val:r=>r.codigo||'—'},
-  {k:'numero',label:'Número',cls:'col-txt',type:'checkbox',val:r=>String(r.numero||'—')},
-  {k:'descripcion',label:'Artículo / Descripción',cls:'col-txt',type:'checkbox',val:r=>r.descripcion||r.articulo||'—'},
-  {k:'importe',label:'Importe + IVA (USD)',cls:'col-num col-importe',type:'amount',val:r=>fmtUSD(r.importe)},
-  {k:'fecha',label:'Fecha',cls:'col-num',type:'checkbox',val:r=>fmtDate(r.fecha)},
-  {k:'vencimientoOrigen',label:'Fecha Vto. Origen',cls:'col-num',type:'checkbox',val:r=>fmtDate(r.vencimientoOrigen)},
-  {k:'observaciones',label:'Observaciones',cls:'col-txt',type:'checkbox',val:r=>r.observaciones||'—'},
+  {k:'cliente',label:'Cliente',cls:'col-cliente',type:'checkbox',val:r=>r.cliente||'—',tdCls:'td-cliente',
+    render:(r,onDetail)=>h('span',{className:'cliente-link',onClick:()=>onDetail(r.cliente)},r.cliente)},
+  {k:'codigo',label:'Código',cls:'col-txt',type:'checkbox',val:r=>r.codigo||'—',render:r=>r.codigo||'—'},
+  {k:'numero',label:'Número',cls:'col-txt',type:'checkbox',val:r=>String(r.numero||'—'),render:r=>r.numero||'—'},
+  {k:'descripcion',label:'Artículo / Descripción',cls:'col-txt',type:'checkbox',val:r=>r.descripcion||r.articulo||'—',tdCls:'td-desc',
+    render:r=>r.descripcion||r.articulo||'—'},
+  {k:'importe',label:'Importe + IVA (USD)',cls:'col-num col-importe',type:'amount',val:r=>fmtUSD(r.importe),tdCls:'col-num col-importe',
+    render:r=>fmtUSD(r.importe)},
+  {k:'fecha',label:'Fecha',cls:'col-num',type:'daterange',val:r=>fmtDate(r.fecha),tdCls:'col-num',render:r=>fmtDate(r.fecha)},
+  {k:'vencimientoOrigen',label:'Fecha Vto. Origen',cls:'col-num',type:'daterange',val:r=>fmtDate(r.vencimientoOrigen),tdCls:'col-num',
+    render:r=>fmtDate(r.vencimientoOrigen)},
+  {k:'observaciones',label:'Observaciones',cls:'col-txt',type:'checkbox',val:r=>r.observaciones||'—',tdCls:'td-obs',
+    render:r=>r.observaciones||'—'},
 ];
 
-function NegociosTable({rows,tipo}){
-  const[search,setSearch]=useState('');
-  const[colFilters,setColFilters]=useState({});   // key -> Set|null (checkbox cols)
-  const[amountQ,setAmountQ]=useState('');          // texto libre para la columna Importe
+function ColToggle({cols,visible,onChange}){
+  const[open,setOpen]=useState(false);
+  const ref=useRef();
+  useEffect(()=>{
+    if(!open)return;
+    const onDoc=e=>{if(ref.current&&!ref.current.contains(e.target))setOpen(false);};
+    document.addEventListener('mousedown',onDoc);
+    return()=>document.removeEventListener('mousedown',onDoc);
+  },[open]);
+  return h('div',{className:'col-toggle-wrap',ref},
+    h('button',{className:'col-toggle-btn',onClick:()=>setOpen(o=>!o)},'☰ Columnas'),
+    open&&h('div',{className:'col-dropdown'},
+      cols.map(c=>{
+        const locked=c.k==='cliente'||c.k==='importe';
+        return h('label',{key:c.k,className:locked?'disabled':''},
+          h('input',{type:'checkbox',checked:visible[c.k]!==false,disabled:locked,
+            onChange:()=>onChange(c.k,visible[c.k]===false)}),
+          c.label+(locked?' (fija)':''));
+      })
+    )
+  );
+}
 
-  // Si cambia de pestaña (pedidos/remitos), se resetean todos los filtros para no arrastrar
-  // selecciones que no aplican del otro conjunto de datos.
-  useEffect(()=>{setColFilters({});setAmountQ('');setSearch('');},[tipo]);
+function NegociosTable({rows,tipo,onDetail}){
+  const[search,setSearch]=useState('');
+  const[colFilters,setColFilters]=useState({});          // key -> Set|null (columnas checkbox)
+  const[dateFilters,setDateFilters]=useState({});        // key -> {from,to} (columnas fecha)
+  const[amountQ,setAmountQ]=useState('');                // texto libre para Importe
+  const[colVisible,setColVisible]=useState({});          // key -> false para ocultar
+  const[vista,setVista]=useState('detalle');             // 'detalle' | 'resumen'
+
+  useEffect(()=>{setColFilters({});setDateFilters({});setAmountQ('');setSearch('');},[tipo]);
 
   const uniqueValues=useMemo(()=>{
     const map={};
@@ -353,6 +463,8 @@ function NegociosTable({rows,tipo}){
   },[rows]);
 
   const setColFilter=(k,v)=>setColFilters(prev=>({...prev,[k]:v}));
+  const setDateFilter=(k,v)=>setDateFilters(prev=>({...prev,[k]:v}));
+  const toggleColVisible=(k,val)=>setColVisible(prev=>({...prev,[k]:val}));
 
   const filtered=useMemo(()=>{
     const q=search.trim().toLowerCase();
@@ -362,6 +474,14 @@ function NegociosTable({rows,tipo}){
         if(c.type==='checkbox'){
           const sel=colFilters[c.k];
           if(sel!=null&&!sel.has(c.val(r)))return false;
+        }else if(c.type==='daterange'){
+          const rng=dateFilters[c.k];
+          if(rng&&(rng.from||rng.to)){
+            const d=parseDate(r[c.k]);
+            if(!d)return false;
+            if(rng.from&&d<new Date(rng.from+'T00:00:00'))return false;
+            if(rng.to&&d>new Date(rng.to+'T23:59:59'))return false;
+          }
         }
       }
       if(aq&&!fmtUSD(r.importe).toLowerCase().replace(/\s/g,'').includes(aq))return false;
@@ -369,57 +489,122 @@ function NegociosTable({rows,tipo}){
       return r.cliente.toLowerCase().includes(q)||r.codigo.toLowerCase().includes(q)||String(r.numero).toLowerCase().includes(q)||
         (r.articulo||'').toLowerCase().includes(q)||(r.descripcion||'').toLowerCase().includes(q)||(r.observaciones||'').toLowerCase().includes(q);
     });
-  },[rows,search,colFilters,amountQ]);
+  },[rows,search,colFilters,dateFilters,amountQ]);
   const{sorted,key,dir,onSort}=useSort(filtered,'cliente',1);
   const total=useMemo(()=>filtered.reduce((s,r)=>s+r.importe,0),[filtered]);
 
+  const resumen=useMemo(()=>{
+    const map=new Map();
+    filtered.forEach(r=>{
+      const e=map.get(r.cliente)||{cliente:r.cliente,cantidad:0,total:0};
+      e.cantidad++;e.total+=r.importe;map.set(r.cliente,e);
+    });
+    return[...map.values()];
+  },[filtered]);
+  const{sorted:resumenSorted,key:rKey,dir:rDir,onSort:onSortResumen}=useSort(resumen,'total',-1);
+
   const cols=COLS_DEF.map(c=>({
     ...c,
-    filter: c.type==='amount'
-      ? h(AmountFilter,{value:amountQ,onChange:setAmountQ})
+    filter: c.type==='amount' ? h(AmountFilter,{value:amountQ,onChange:setAmountQ})
+      : c.type==='daterange' ? h(DateRangeFilter,{value:dateFilters[c.k]||{from:'',to:''},onChange:v=>setDateFilter(c.k,v)})
       : h(ColumnFilter,{options:uniqueValues[c.k]||[],selected:colFilters[c.k]??null,onChange:v=>setColFilter(c.k,v)})
-  }));
-  const activeFilterCount=Object.values(colFilters).filter(v=>v!=null).length+(amountQ.trim()!==''?1:0);
+  })).filter(c=>colVisible[c.k]!==false);
+  const activeFilterCount=Object.values(colFilters).filter(v=>v!=null).length
+    +Object.values(dateFilters).filter(v=>v&&(v.from||v.to)).length
+    +(amountQ.trim()!==''?1:0);
+
+  const tipoLabel=tipo==='pedido'?'pedidos':tipo==='remito'?'remitos':'registros';
 
   return h(React.Fragment,{},
     h('div',{className:'toolbar'},
       h('div',{className:'toolbar-left'},
+        h('div',{className:'view-toggle'},
+          h('button',{className:vista==='detalle'?'active':'',onClick:()=>setVista('detalle')},'Detalle'),
+          h('button',{className:vista==='resumen'?'active':'',onClick:()=>setVista('resumen')},'Por cliente')),
         h('span',{style:{fontSize:'.8rem',color:'var(--gray-600)'}},filtered.length+' de '+rows.length+' registros'),
-        activeFilterCount>0&&h('button',{className:'filter-chip active',onClick:()=>{setColFilters({});setAmountQ('');}},
+        activeFilterCount>0&&h('button',{className:'filter-chip active',onClick:()=>{setColFilters({});setDateFilters({});setAmountQ('');}},
           activeFilterCount+' filtro'+(activeFilterCount>1?'s':'')+' activo'+(activeFilterCount>1?'s':'')+' ✕')
       ),
       h('div',{className:'toolbar-right'},
         h('div',{className:'search-wrap'},
           h('span',{className:'search-icon'},'🔍'),
           h('input',{type:'text',placeholder:'Buscar cliente, artículo, comprobante…',value:search,onChange:e=>setSearch(e.target.value),className:'search-input'}),
-          search&&h('button',{className:'search-clear',onClick:()=>setSearch('')},'✕')))
+          search&&h('button',{className:'search-clear',onClick:()=>setSearch('')},'✕')),
+        vista==='detalle'&&h(ColToggle,{cols:COLS_DEF,visible:colVisible,onChange:toggleColVisible}),
+        h('button',{className:'btn btn-primary',style:{padding:'6px 12px',fontSize:'.76rem'},
+          onClick:()=>exportToExcel(sorted,tipoLabel+'_filtrado')},'↓ Exportar')
+      )
     ),
-    sorted.length===0?h('div',{className:'empty-table'},'No hay '+(tipo==='pedido'?'pedidos':tipo==='remito'?'remitos':'registros')+' que coincidan.'):
-    h('div',{className:'table-wrap'},
-      h('table',{className:'data-table'},
-        h('thead',{},h('tr',{},
-          cols.map(c=>h('th',{key:c.k,className:c.cls},
-            h('span',{onClick:()=>onSort(c.k),style:{cursor:'pointer'}},c.label,key===c.k&&h('span',{className:'sort-arrow'},dir===1?'▲':'▼')),
-            c.filter
-          ))
-        )),
-        h('tbody',{},
-          sorted.map((r,i)=>h('tr',{key:i,className:i%2?'row-alt':''},
-            h('td',{className:'td-cliente'},r.cliente),
-            h('td',{},r.codigo||'—'),
-            h('td',{},r.numero||'—'),
-            h('td',{className:'td-desc'},r.descripcion||r.articulo||'—'),
-            h('td',{className:'col-num col-importe'},fmtUSD(r.importe)),
-            h('td',{className:'col-num'},fmtDate(r.fecha)),
-            h('td',{className:'col-num'},fmtDate(r.vencimientoOrigen)),
-            h('td',{className:'td-obs'},r.observaciones||'—'),
-          ))
-        ),
-        h('tfoot',{},h('tr',{className:'totals-row'},
-          h('td',{},'TOTAL'),h('td',{},''),h('td',{},''),h('td',{},''),
-          h('td',{className:'col-num'},fmtUSD(total)),
-          h('td',{},''),h('td',{},''),h('td',{},'')
+
+    vista==='resumen'
+      ? (resumenSorted.length===0?h('div',{className:'empty-table'},'No hay '+tipoLabel+' que coincidan.'):
+        h('div',{className:'table-wrap'},
+          h('table',{className:'data-table'},
+            h('thead',{},h('tr',{},
+              h('th',{className:'col-cliente',onClick:()=>onSortResumen('cliente'),style:{cursor:'pointer'}},'Cliente',rKey==='cliente'&&h('span',{className:'sort-arrow'},rDir===1?'▲':'▼')),
+              h('th',{className:'col-num',onClick:()=>onSortResumen('cantidad'),style:{cursor:'pointer'}},'Cantidad',rKey==='cantidad'&&h('span',{className:'sort-arrow'},rDir===1?'▲':'▼')),
+              h('th',{className:'col-num col-importe',onClick:()=>onSortResumen('total'),style:{cursor:'pointer'}},'Total importe + IVA (USD)',rKey==='total'&&h('span',{className:'sort-arrow'},rDir===1?'▲':'▼')),
+            )),
+            h('tbody',{},
+              resumenSorted.map((e,i)=>h('tr',{key:e.cliente,className:i%2?'row-alt':''},
+                h('td',{className:'td-cliente'},h('span',{className:'cliente-link',onClick:()=>onDetail(e.cliente)},e.cliente)),
+                h('td',{className:'col-num'},e.cantidad),
+                h('td',{className:'col-num col-importe'},fmtUSD(e.total)),
+              ))
+            ),
+            h('tfoot',{},h('tr',{className:'totals-row'},
+              h('td',{},'TOTAL'),h('td',{className:'col-num'},filtered.length),h('td',{className:'col-num'},fmtUSD(total))
+            ))
+          )
         ))
+      : (sorted.length===0?h('div',{className:'empty-table'},'No hay '+tipoLabel+' que coincidan.'):
+        h('div',{className:'table-wrap'},
+          h('table',{className:'data-table'},
+            h('thead',{},h('tr',{},
+              cols.map(c=>h('th',{key:c.k,className:c.cls},
+                h('span',{onClick:()=>onSort(c.k),style:{cursor:'pointer'}},c.label,key===c.k&&h('span',{className:'sort-arrow'},dir===1?'▲':'▼')),
+                c.filter
+              ))
+            )),
+            h('tbody',{},
+              sorted.map((r,i)=>h('tr',{key:i,className:i%2?'row-alt':''},
+                cols.map(c=>h('td',{key:c.k,className:c.tdCls||''},c.render(r,onDetail)))
+              ))
+            ),
+            h('tfoot',{},h('tr',{className:'totals-row'},
+              cols.map(c=>h('td',{key:c.k,className:c.k==='importe'?'col-num':''},c.k==='cliente'?'TOTAL':c.k==='importe'?fmtUSD(total):''))
+            ))
+          )
+        ))
+  );
+}
+
+function DetailModal({cliente,pedidos,remitos,onClose}){
+  const totalPed=pedidos.reduce((s,r)=>s+r.importe,0);
+  const totalRem=remitos.reduce((s,r)=>s+r.importe,0);
+  const miniTable=(rows,emptyMsg)=>rows.length===0
+    ? h('div',{className:'empty-section'},emptyMsg)
+    : h('table',{className:'mini-table'},
+        h('thead',{},h('tr',{},h('th',{},'Código'),h('th',{},'Número'),h('th',{},'Artículo'),h('th',{},'Importe + IVA'),h('th',{},'Fecha vto. origen'))),
+        h('tbody',{},rows.map((r,i)=>h('tr',{key:i},
+          h('td',{},r.codigo),h('td',{},r.numero),h('td',{},r.descripcion||r.articulo||'—'),
+          h('td',{},fmtUSD(r.importe)),h('td',{},fmtDate(r.vencimientoOrigen))
+        ))),
+        h('tfoot',{},h('tr',{},h('td',{colSpan:3},'Subtotal'),h('td',{},fmtUSD(rows.reduce((s,r)=>s+r.importe,0))),h('td',{})))
+      );
+  return h('div',{className:'modal-overlay',onClick:onClose},
+    h('div',{className:'modal-card',onClick:e=>e.stopPropagation()},
+      h('div',{className:'modal-header'},
+        h('div',{},h('div',{className:'modal-title'},cliente),h('div',{className:'modal-sub'},'Detalle de negocios pendientes de facturar')),
+        h('button',{className:'modal-close',onClick:onClose},'✕')),
+      h('div',{className:'modal-body'},
+        h('div',{className:'modal-summary'},
+          h('div',{className:'modal-sum-card'},h('div',{className:'msc-label'},'Pedidos'),h('div',{className:'msc-value'},fmtUSD(totalPed))),
+          h('div',{className:'modal-sum-card'},h('div',{className:'msc-label'},'Remitos'),h('div',{className:'msc-value'},fmtUSD(totalRem))),
+          h('div',{className:'modal-sum-card'},h('div',{className:'msc-label'},'Total pendiente'),h('div',{className:'msc-value'},fmtUSD(totalPed+totalRem))),
+        ),
+        h('div',{className:'modal-section'},h('div',{className:'modal-section-title'},'📄 Pedidos ('+pedidos.length+')'),miniTable(pedidos,'Sin pedidos pendientes.')),
+        h('div',{className:'modal-section'},h('div',{className:'modal-section-title'},'🚚 Remitos ('+remitos.length+')'),miniTable(remitos,'Sin remitos pendientes.')),
       )
     )
   );
@@ -431,6 +616,7 @@ function App(){
   const[error,setError]=useState('');
   const[rows,setRows]=useState(null);
   const[tab,setTab]=useState('pedidos');
+  const[detailCliente,setDetailCliente]=useState(null);
 
   const readExcel=file=>new Promise((res,rej)=>{
     const reader=new FileReader();
@@ -501,15 +687,22 @@ function App(){
           h('button',{className:'tab'+(tab==='remitos'?' active':''),onClick:()=>setTab('remitos')},'🚚 Remitos',h('span',{className:'tab-badge'},remitos.length)),
           otros.length>0&&h('button',{className:'tab'+(tab==='otros'?' active':''),onClick:()=>setTab('otros')},'⚠ Sin clasificar',h('span',{className:'tab-badge'},otros.length)),
         ),
-        h(NegociosTable,{rows:current,tipo:tab}),
+        h(NegociosTable,{rows:current,tipo:tab,onDetail:setDetailCliente}),
         h('div',{className:'legend-bar'},
           h('span',{className:'leg'},'IVA aplicado: Fertilizante 10,5% · Agroquímico / Otros 21% · Importe ya incluye IVA'),
           h('span',{className:'leg'},'Pedidos = códigos PED, PEDA, PDD, PEDTER, PEDCYO · Remitos = REM, REMM, REMTER, REMCYO, REMMTE'),
-          h('span',{className:'leg'},'Clic en el ▾ de cada columna para filtrar por valores (o buscar un importe puntual) · Clic en el nombre de columna para ordenar'),
+          h('span',{className:'leg'},'Clic en el ▾ de cada columna para filtrar (rango de fechas en Fecha / Fecha Vto. Origen) · Clic en el nombre de columna para ordenar'),
+          h('span',{className:'leg'},'Clic en un cliente para ver su detalle completo · "Por cliente" agrupa el total pendiente · "Columnas" oculta/muestra · "Exportar" descarga lo filtrado'),
         )
       ),
     ),
     h('footer',{className:'app-footer'},'📍 Tablero de Pedidos y Remitos · Procesamiento 100% local en tu navegador'),
+    detailCliente&&h(DetailModal,{
+      cliente:detailCliente,
+      pedidos:pedidos.filter(r=>r.cliente===detailCliente),
+      remitos:remitos.filter(r=>r.cliente===detailCliente),
+      onClose:()=>setDetailCliente(null),
+    }),
   );
 }
 ReactDOM.createRoot(document.getElementById('root')).render(h(App));
