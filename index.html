@@ -80,11 +80,30 @@ body{font-family:var(--font-sans);background:var(--gray-50);color:var(--gray-800
 .search-input{border:1px solid var(--gray-200);border-radius:var(--radius);padding:7px 28px;font-family:var(--font-sans);font-size:.8rem;width:220px;background:var(--white)}
 .search-input:focus{outline:none;border-color:var(--blue)}
 .search-clear{position:absolute;right:7px;background:none;border:none;cursor:pointer;font-size:.72rem;color:var(--gray-400);padding:2px}
+.filter-chip{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;border:1px solid var(--gray-200);background:var(--gray-50);font-size:.73rem;font-weight:600;cursor:pointer;font-family:var(--font-sans);color:var(--gray-600)}
+.filter-chip.active{background:var(--navy);color:var(--white);border-color:var(--navy)}
+.filter-chip:hover{background:var(--sky);border-color:var(--blue-light)}
+.filter-chip.active:hover{background:var(--navy-mid)}
 .table-wrap{overflow-x:auto;border-radius:var(--radius-lg);box-shadow:var(--shadow-md);border:1px solid var(--gray-200)}
 .data-table{width:100%;border-collapse:collapse;font-size:.79rem;background:var(--white)}
-.data-table thead th{background:var(--navy-light);color:var(--white);font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:9px 11px;white-space:nowrap;cursor:pointer;user-select:none}
+.data-table thead th{background:var(--navy-light);color:var(--white);font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:9px 11px;white-space:nowrap;user-select:none;position:relative}
 .data-table thead th:hover{background:var(--navy-mid)}
 .data-table thead th.col-importe{background:var(--navy-mid)}
+.colf-wrap{position:relative;display:inline-block;margin-left:6px}
+.colf-btn{background:rgba(255,255,255,.15);border:none;color:var(--white);border-radius:4px;width:18px;height:18px;font-size:.65rem;cursor:pointer;line-height:1}
+.colf-btn:hover{background:rgba(255,255,255,.3)}
+.colf-btn.active{background:var(--blue-light);color:var(--white)}
+.colf-panel{position:absolute;top:calc(100% + 4px);left:0;background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius);box-shadow:var(--shadow-lg);padding:8px;z-index:80;width:220px;text-transform:none;letter-spacing:normal;font-weight:400;cursor:default}
+.colf-search{width:100%;border:1px solid var(--gray-200);border-radius:6px;padding:5px 7px;font-family:var(--font-sans);font-size:.75rem;margin-bottom:6px;color:var(--gray-800)}
+.colf-search:focus{outline:none;border-color:var(--blue)}
+.colf-actions{display:flex;gap:6px;margin-bottom:6px}
+.colf-actions button{flex:1;background:var(--gray-100);border:none;border-radius:6px;padding:4px 6px;font-size:.68rem;font-weight:600;color:var(--navy);cursor:pointer;font-family:var(--font-sans)}
+.colf-actions button:hover{background:var(--sky)}
+.colf-list{max-height:200px;overflow-y:auto;display:flex;flex-direction:column;gap:1px}
+.colf-item{display:flex;align-items:center;gap:7px;padding:4px 5px;border-radius:5px;font-size:.75rem;color:var(--gray-800);font-family:var(--font-sans);cursor:pointer}
+.colf-item:hover{background:var(--gray-50)}
+.colf-item input{accent-color:var(--blue);width:13px;height:13px;flex-shrink:0}
+.colf-item span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sort-arrow{margin-left:3px;opacity:.6;font-size:.65rem}
 .col-cliente{text-align:left;min-width:220px}.col-txt{text-align:left;min-width:160px}.col-num{text-align:right;min-width:130px;white-space:nowrap}
 tbody .col-importe{background:rgba(224,238,255,.4)}
@@ -239,29 +258,87 @@ function useSort(rows,defaultKey,defaultDir){
   return{sorted,key,dir,onSort};
 }
 
+// Filtro estilo Excel: funnel con lista de checkboxes sobre los valores únicos de la columna.
+function ColumnFilter({options,selected,onChange}){
+  const[open,setOpen]=useState(false);
+  const[q,setQ]=useState('');
+  const ref=useRef();
+  useEffect(()=>{
+    if(!open)return;
+    const onDoc=e=>{if(ref.current&&!ref.current.contains(e.target))setOpen(false);};
+    document.addEventListener('mousedown',onDoc);
+    return()=>document.removeEventListener('mousedown',onDoc);
+  },[open]);
+  const active=selected!==null;
+  const visibleOptions=useMemo(()=>{
+    const qq=q.trim().toLowerCase();
+    return qq?options.filter(o=>o.toLowerCase().includes(qq)):options;
+  },[options,q]);
+  const isChecked=v=>!active||selected.has(v);
+  const toggle=v=>{
+    const base=active?new Set(selected):new Set(options);
+    if(base.has(v))base.delete(v);else base.add(v);
+    onChange(base.size===options.length?null:base);
+  };
+  return h('span',{className:'colf-wrap',ref,onClick:e=>e.stopPropagation()},
+    h('button',{className:'colf-btn'+(active?' active':''),onClick:()=>setOpen(o=>!o),title:'Filtrar'},'▾'),
+    open&&h('div',{className:'colf-panel'},
+      h('input',{className:'colf-search',type:'text',placeholder:'Buscar…',value:q,onChange:e=>setQ(e.target.value),onClick:e=>e.stopPropagation()}),
+      h('div',{className:'colf-actions'},
+        h('button',{onClick:()=>onChange(null)},'Todos'),
+        h('button',{onClick:()=>onChange(new Set())},'Ninguno')),
+      h('div',{className:'colf-list'},
+        visibleOptions.map(o=>h('label',{key:o,className:'colf-item'},
+          h('input',{type:'checkbox',checked:isChecked(o),onChange:()=>toggle(o)}),
+          h('span',{},o||'(vacío)')))
+      )
+    )
+  );
+}
+
 function NegociosTable({rows,tipo}){
   const[search,setSearch]=useState('');
+  const[filtroCliente,setFiltroCliente]=useState(null);
+  const[filtroCodigo,setFiltroCodigo]=useState(null);
+
+  const uniqueClientes=useMemo(()=>[...new Set(rows.map(r=>r.cliente))].sort((a,b)=>a.localeCompare(b)),[rows]);
+  const uniqueCodigos=useMemo(()=>[...new Set(rows.map(r=>r.codigo))].sort((a,b)=>a.localeCompare(b)),[rows]);
+
+  // Si cambia de pestaña (pedidos/remitos), los filtros de columna se resetean para no arrastrar selecciones que no aplican.
+  useEffect(()=>{setFiltroCliente(null);setFiltroCodigo(null);setSearch('');},[tipo]);
+
   const filtered=useMemo(()=>{
     const q=search.trim().toLowerCase();
-    if(!q)return rows;
-    return rows.filter(r=>r.cliente.toLowerCase().includes(q)||r.comprobante.toLowerCase().includes(q)||(r.articulo||'').toLowerCase().includes(q)||(r.descripcion||'').toLowerCase().includes(q));
-  },[rows,search]);
+    return rows.filter(r=>{
+      if(filtroCliente!==null&&!filtroCliente.has(r.cliente))return false;
+      if(filtroCodigo!==null&&!filtroCodigo.has(r.codigo))return false;
+      if(!q)return true;
+      return r.cliente.toLowerCase().includes(q)||r.codigo.toLowerCase().includes(q)||r.numero.toString().toLowerCase().includes(q)||
+        (r.articulo||'').toLowerCase().includes(q)||(r.descripcion||'').toLowerCase().includes(q)||(r.observaciones||'').toLowerCase().includes(q);
+    });
+  },[rows,search,filtroCliente,filtroCodigo]);
   const{sorted,key,dir,onSort}=useSort(filtered,'cliente',1);
   const total=useMemo(()=>filtered.reduce((s,r)=>s+r.importe,0),[filtered]);
 
   const cols=[
-    {k:'cliente',label:'Cliente',cls:'col-cliente'},
-    {k:'comprobante',label:'Comprobante',cls:'col-txt'},
+    {k:'cliente',label:'Cliente',cls:'col-cliente',filter:h(ColumnFilter,{options:uniqueClientes,selected:filtroCliente,onChange:setFiltroCliente})},
+    {k:'codigo',label:'Código',cls:'col-txt',filter:h(ColumnFilter,{options:uniqueCodigos,selected:filtroCodigo,onChange:setFiltroCodigo})},
+    {k:'numero',label:'Número',cls:'col-txt'},
     {k:'descripcion',label:'Artículo / Descripción',cls:'col-txt'},
     {k:'importe',label:'Importe + IVA (USD)',cls:'col-num col-importe'},
+    {k:'fecha',label:'Fecha',cls:'col-num'},
     {k:'vencimientoOrigen',label:'Fecha Vto. Origen',cls:'col-num'},
     {k:'observaciones',label:'Observaciones',cls:'col-txt'},
   ];
+  const activeFilterCount=(filtroCliente!==null?1:0)+(filtroCodigo!==null?1:0);
 
   return h(React.Fragment,{},
     h('div',{className:'toolbar'},
       h('div',{className:'toolbar-left'},
-        h('span',{style:{fontSize:'.8rem',color:'var(--gray-600)'}},filtered.length+' de '+rows.length+' registros')),
+        h('span',{style:{fontSize:'.8rem',color:'var(--gray-600)'}},filtered.length+' de '+rows.length+' registros'),
+        activeFilterCount>0&&h('button',{className:'filter-chip active',onClick:()=>{setFiltroCliente(null);setFiltroCodigo(null);}},
+          activeFilterCount+' filtro'+(activeFilterCount>1?'s':'')+' activo'+(activeFilterCount>1?'s':'')+' ✕')
+      ),
       h('div',{className:'toolbar-right'},
         h('div',{className:'search-wrap'},
           h('span',{className:'search-icon'},'🔍'),
@@ -272,22 +349,27 @@ function NegociosTable({rows,tipo}){
     h('div',{className:'table-wrap'},
       h('table',{className:'data-table'},
         h('thead',{},h('tr',{},
-          cols.map(c=>h('th',{key:c.k,className:c.cls,onClick:()=>onSort(c.k)},c.label,key===c.k&&h('span',{className:'sort-arrow'},dir===1?'▲':'▼')))
+          cols.map(c=>h('th',{key:c.k,className:c.cls},
+            h('span',{onClick:()=>onSort(c.k),style:{cursor:'pointer'}},c.label,key===c.k&&h('span',{className:'sort-arrow'},dir===1?'▲':'▼')),
+            c.filter
+          ))
         )),
         h('tbody',{},
           sorted.map((r,i)=>h('tr',{key:i,className:i%2?'row-alt':''},
             h('td',{className:'td-cliente'},r.cliente),
-            h('td',{},r.comprobante),
+            h('td',{},r.codigo||'—'),
+            h('td',{},r.numero||'—'),
             h('td',{className:'td-desc'},r.descripcion||r.articulo||'—'),
             h('td',{className:'col-num col-importe'},fmtUSD(r.importe)),
+            h('td',{className:'col-num'},fmtDate(r.fecha)),
             h('td',{className:'col-num'},fmtDate(r.vencimientoOrigen)),
             h('td',{className:'td-obs'},r.observaciones||'—'),
           ))
         ),
         h('tfoot',{},h('tr',{className:'totals-row'},
-          h('td',{},'TOTAL'),h('td',{},''),h('td',{},''),
+          h('td',{},'TOTAL'),h('td',{},''),h('td',{},''),h('td',{},''),
           h('td',{className:'col-num'},fmtUSD(total)),
-          h('td',{},''),h('td',{},'')
+          h('td',{},''),h('td',{},''),h('td',{},'')
         ))
       )
     )
@@ -373,6 +455,7 @@ function App(){
         h('div',{className:'legend-bar'},
           h('span',{className:'leg'},'IVA aplicado: Fertilizante 10,5% · Agroquímico / Otros 21% · Importe ya incluye IVA'),
           h('span',{className:'leg'},'Pedidos = códigos PED, PEDA, PDD, PEDTER, PEDCYO · Remitos = REM, REMM, REMTER, REMCYO, REMMTE'),
+          h('span',{className:'leg'},'Clic en el ▾ de Cliente o Código para filtrar por valores puntuales · Clic en el nombre de columna para ordenar'),
         )
       ),
     ),
