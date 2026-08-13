@@ -32,8 +32,10 @@ body{font-family:var(--font-sans);background:var(--gray-50);color:var(--gray-800
 .app-main{flex:1;max-width:1400px;margin:0 auto;width:100%;padding:0 24px 48px}
 .app-header{background:var(--navy);border-bottom:3px solid var(--blue);position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(0,0,0,.25)}
 .header-inner{max-width:1400px;margin:0 auto;padding:12px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
-.header-brand{display:flex;align-items:center;gap:12px;flex-shrink:0}
-.header-logo{width:38px;height:38px;background:var(--blue);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px}
+.header-brand{display:flex;align-items:center;gap:14px;flex-shrink:0}
+.header-wordmark{font-size:1.15rem;font-weight:700;color:var(--white);letter-spacing:-.02em}
+.header-wordmark span{color:var(--blue-light)}
+.header-divider{width:1px;height:26px;background:rgba(255,255,255,.2)}
 .header-title{font-size:1.05rem;font-weight:700;color:var(--white);letter-spacing:-.02em}
 .header-sub{font-size:.7rem;color:var(--sky-dark);margin-top:1px}
 .header-actions{display:flex;gap:8px;flex-wrap:wrap}
@@ -85,11 +87,11 @@ body{font-family:var(--font-sans);background:var(--gray-50);color:var(--gray-800
 .filter-chip:hover{background:var(--sky);border-color:var(--blue-light)}
 .filter-chip.active:hover{background:var(--navy-mid)}
 .table-wrap{overflow-x:auto;border-radius:var(--radius-lg);box-shadow:var(--shadow-md);border:1px solid var(--gray-200)}
-.data-table{width:100%;border-collapse:collapse;font-size:.79rem;background:var(--white)}
-.data-table thead th{background:var(--navy-light);color:var(--white);font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:9px 11px;white-space:nowrap;user-select:none;position:relative}
+.data-table{width:100%;border-collapse:collapse;font-size:.75rem;background:var(--white)}
+.data-table thead th{background:var(--navy-light);color:var(--white);font-size:.64rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:6px 8px;white-space:nowrap;user-select:none;position:relative}
 .data-table thead th:hover{background:var(--navy-mid)}
 .data-table thead th.col-importe{background:var(--navy-mid)}
-.colf-wrap{position:relative;display:inline-block;margin-left:6px}
+.colf-wrap{position:relative;display:inline-block;margin-left:4px}
 .colf-btn{background:rgba(255,255,255,.15);border:none;color:var(--white);border-radius:4px;width:18px;height:18px;font-size:.65rem;cursor:pointer;line-height:1}
 .colf-btn:hover{background:rgba(255,255,255,.3)}
 .colf-btn.active{background:var(--blue-light);color:var(--white)}
@@ -109,15 +111,15 @@ body{font-family:var(--font-sans);background:var(--gray-50);color:var(--gray-800
 .colf-item input{accent-color:var(--blue);width:13px;height:13px;flex-shrink:0}
 .colf-item span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sort-arrow{margin-left:3px;opacity:.6;font-size:.65rem}
-.col-cliente{text-align:left;min-width:220px}.col-txt{text-align:left;min-width:160px}.col-num{text-align:right;min-width:130px;white-space:nowrap}
+.col-cliente{text-align:left;min-width:150px}.col-txt{text-align:left;min-width:100px}.col-num{text-align:right;min-width:95px;white-space:nowrap}
 tbody .col-importe{background:rgba(224,238,255,.4)}
-.data-table tbody td{padding:7px 11px;border-bottom:1px solid var(--gray-100);font-family:var(--font-mono);font-size:.77rem;vertical-align:top}
-.td-cliente{font-family:var(--font-sans)!important;font-size:.79rem!important;color:var(--navy);font-weight:600}
-.td-obs{font-family:var(--font-sans)!important;font-size:.74rem!important;color:var(--gray-600);max-width:280px;white-space:normal}
-.td-desc{font-family:var(--font-sans)!important;font-size:.76rem!important;color:var(--gray-800);max-width:220px;white-space:normal}
+.data-table tbody td{padding:4px 8px;border-bottom:1px solid var(--gray-100);font-family:var(--font-mono);font-size:.73rem;vertical-align:top}
+.td-cliente{font-family:var(--font-sans)!important;font-size:.75rem!important;color:var(--navy);font-weight:600}
+.td-obs{font-family:var(--font-sans)!important;font-size:.71rem!important;color:var(--gray-600);max-width:200px;white-space:normal}
+.td-desc{font-family:var(--font-sans)!important;font-size:.72rem!important;color:var(--gray-800);max-width:170px;white-space:normal}
 .row-alt{background:var(--gray-50)}.data-table tbody tr:hover{background:var(--sky)!important}
 .totals-row{background:var(--navy)!important;position:sticky;bottom:0}
-.totals-row td{color:var(--white)!important;font-family:var(--font-mono)!important;font-weight:700!important;font-size:.77rem!important;padding:9px 11px!important;border-bottom:none!important;white-space:nowrap}
+.totals-row td{color:var(--white)!important;font-family:var(--font-mono)!important;font-weight:700!important;font-size:.73rem!important;padding:6px 8px!important;border-bottom:none!important;white-space:nowrap}
 .empty-table{text-align:center;padding:48px;color:var(--gray-400);font-size:.9rem;background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg)}
 .legend-bar{display:flex;gap:14px;margin-top:8px;padding:7px 12px;background:var(--gray-100);border-radius:var(--radius);flex-wrap:wrap}
 .leg{font-size:.7rem;color:var(--gray-600)}
@@ -458,10 +460,11 @@ function App(){
     h('header',{className:'app-header'},
       h('div',{className:'header-inner'},
         h('div',{className:'header-brand'},
-          h('div',{className:'header-logo'},'📦'),
+          h('div',{className:'header-wordmark'},'FYO',h('span',{},'.')),
+          h('div',{className:'header-divider'}),
           h('div',{},
-            h('div',{className:'header-title'},'Pedidos y Remitos'),
-            h('div',{className:'header-sub'},'Negocios pendientes de facturar'))),
+            h('div',{className:'header-title'},'Pedidos y remitos'),
+            h('div',{className:'header-sub'},'Acopio Insumos · Negocios ptes. de facturar'))),
         rows&&h('div',{className:'header-actions'},
           h('button',{className:'btn btn-ghost',onClick:()=>{setRows(null);setFiles({negocios:null,ctaCte:null,cheques:null,canjes:null});}},'↺ Nuevo archivo'),
           h('button',{className:'btn btn-primary',onClick:()=>window.print()},'🖨 PDF'),
