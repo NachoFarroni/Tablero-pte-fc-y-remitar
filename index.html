@@ -100,6 +100,10 @@ body{font-family:var(--font-sans);background:var(--gray-50);color:var(--gray-800
 .colf-actions button{flex:1;background:var(--gray-100);border:none;border-radius:6px;padding:4px 6px;font-size:.68rem;font-weight:600;color:var(--navy);cursor:pointer;font-family:var(--font-sans)}
 .colf-actions button:hover{background:var(--sky)}
 .colf-list{max-height:200px;overflow-y:auto;display:flex;flex-direction:column;gap:1px}
+.colf-empty{padding:10px 4px;text-align:center;font-size:.72rem;color:var(--gray-400);font-family:var(--font-sans)}
+.colf-panel-amount{width:180px}
+.colf-clear{width:100%;background:var(--gray-100);border:none;border-radius:6px;padding:5px 6px;font-size:.7rem;font-weight:600;color:var(--navy);cursor:pointer;font-family:var(--font-sans)}
+.colf-clear:hover{background:var(--sky)}
 .colf-item{display:flex;align-items:center;gap:7px;padding:4px 5px;border-radius:5px;font-size:.75rem;color:var(--gray-800);font-family:var(--font-sans);cursor:pointer}
 .colf-item:hover{background:var(--gray-50)}
 .colf-item input{accent-color:var(--blue);width:13px;height:13px;flex-shrink:0}
@@ -258,6 +262,28 @@ function useSort(rows,defaultKey,defaultDir){
   return{sorted,key,dir,onSort};
 }
 
+// Buscador simple para columnas numéricas (Importe + IVA): no tiene sentido un checklist
+// de valores únicos porque casi no se repiten, así que filtra por texto contenido.
+function AmountFilter({value,onChange}){
+  const[open,setOpen]=useState(false);
+  const ref=useRef();
+  useEffect(()=>{
+    if(!open)return;
+    const onDoc=e=>{if(ref.current&&!ref.current.contains(e.target))setOpen(false);};
+    document.addEventListener('mousedown',onDoc);
+    return()=>document.removeEventListener('mousedown',onDoc);
+  },[open]);
+  const active=value.trim()!=='';
+  return h('span',{className:'colf-wrap',ref,onClick:e=>e.stopPropagation()},
+    h('button',{className:'colf-btn'+(active?' active':''),onClick:()=>setOpen(o=>!o),title:'Buscar'},'▾'),
+    open&&h('div',{className:'colf-panel colf-panel-amount'},
+      h('input',{className:'colf-search',type:'text',placeholder:'Ej: 1.500 o 89,25',value,autoFocus:true,
+        onChange:e=>onChange(e.target.value),onClick:e=>e.stopPropagation()}),
+      active&&h('button',{className:'colf-clear',onClick:()=>onChange('')},'Limpiar')
+    )
+  );
+}
+
 // Filtro estilo Excel: funnel con lista de checkboxes sobre los valores únicos de la columna.
 function ColumnFilter({options,selected,onChange}){
   const[open,setOpen]=useState(false);
@@ -288,6 +314,7 @@ function ColumnFilter({options,selected,onChange}){
         h('button',{onClick:()=>onChange(null)},'Todos'),
         h('button',{onClick:()=>onChange(new Set())},'Ninguno')),
       h('div',{className:'colf-list'},
+        visibleOptions.length===0?h('div',{className:'colf-empty'},'Sin resultados'):
         visibleOptions.map(o=>h('label',{key:o,className:'colf-item'},
           h('input',{type:'checkbox',checked:isChecked(o),onChange:()=>toggle(o)}),
           h('span',{},o||'(vacío)')))
@@ -296,47 +323,67 @@ function ColumnFilter({options,selected,onChange}){
   );
 }
 
+// Columnas de tipo checkbox: cada una define cómo se lee el valor a mostrar/filtrar/ordenar.
+const COLS_DEF=[
+  {k:'cliente',label:'Cliente',cls:'col-cliente',type:'checkbox',val:r=>r.cliente||'—'},
+  {k:'codigo',label:'Código',cls:'col-txt',type:'checkbox',val:r=>r.codigo||'—'},
+  {k:'numero',label:'Número',cls:'col-txt',type:'checkbox',val:r=>String(r.numero||'—')},
+  {k:'descripcion',label:'Artículo / Descripción',cls:'col-txt',type:'checkbox',val:r=>r.descripcion||r.articulo||'—'},
+  {k:'importe',label:'Importe + IVA (USD)',cls:'col-num col-importe',type:'amount',val:r=>fmtUSD(r.importe)},
+  {k:'fecha',label:'Fecha',cls:'col-num',type:'checkbox',val:r=>fmtDate(r.fecha)},
+  {k:'vencimientoOrigen',label:'Fecha Vto. Origen',cls:'col-num',type:'checkbox',val:r=>fmtDate(r.vencimientoOrigen)},
+  {k:'observaciones',label:'Observaciones',cls:'col-txt',type:'checkbox',val:r=>r.observaciones||'—'},
+];
+
 function NegociosTable({rows,tipo}){
   const[search,setSearch]=useState('');
-  const[filtroCliente,setFiltroCliente]=useState(null);
-  const[filtroCodigo,setFiltroCodigo]=useState(null);
+  const[colFilters,setColFilters]=useState({});   // key -> Set|null (checkbox cols)
+  const[amountQ,setAmountQ]=useState('');          // texto libre para la columna Importe
 
-  const uniqueClientes=useMemo(()=>[...new Set(rows.map(r=>r.cliente))].sort((a,b)=>a.localeCompare(b)),[rows]);
-  const uniqueCodigos=useMemo(()=>[...new Set(rows.map(r=>r.codigo))].sort((a,b)=>a.localeCompare(b)),[rows]);
+  // Si cambia de pestaña (pedidos/remitos), se resetean todos los filtros para no arrastrar
+  // selecciones que no aplican del otro conjunto de datos.
+  useEffect(()=>{setColFilters({});setAmountQ('');setSearch('');},[tipo]);
 
-  // Si cambia de pestaña (pedidos/remitos), los filtros de columna se resetean para no arrastrar selecciones que no aplican.
-  useEffect(()=>{setFiltroCliente(null);setFiltroCodigo(null);setSearch('');},[tipo]);
+  const uniqueValues=useMemo(()=>{
+    const map={};
+    COLS_DEF.forEach(c=>{if(c.type==='checkbox')map[c.k]=[...new Set(rows.map(c.val))].sort((a,b)=>a.localeCompare(b,'es'));});
+    return map;
+  },[rows]);
+
+  const setColFilter=(k,v)=>setColFilters(prev=>({...prev,[k]:v}));
 
   const filtered=useMemo(()=>{
     const q=search.trim().toLowerCase();
+    const aq=amountQ.trim().toLowerCase().replace(/\s/g,'');
     return rows.filter(r=>{
-      if(filtroCliente!==null&&!filtroCliente.has(r.cliente))return false;
-      if(filtroCodigo!==null&&!filtroCodigo.has(r.codigo))return false;
+      for(const c of COLS_DEF){
+        if(c.type==='checkbox'){
+          const sel=colFilters[c.k];
+          if(sel!=null&&!sel.has(c.val(r)))return false;
+        }
+      }
+      if(aq&&!fmtUSD(r.importe).toLowerCase().replace(/\s/g,'').includes(aq))return false;
       if(!q)return true;
-      return r.cliente.toLowerCase().includes(q)||r.codigo.toLowerCase().includes(q)||r.numero.toString().toLowerCase().includes(q)||
+      return r.cliente.toLowerCase().includes(q)||r.codigo.toLowerCase().includes(q)||String(r.numero).toLowerCase().includes(q)||
         (r.articulo||'').toLowerCase().includes(q)||(r.descripcion||'').toLowerCase().includes(q)||(r.observaciones||'').toLowerCase().includes(q);
     });
-  },[rows,search,filtroCliente,filtroCodigo]);
+  },[rows,search,colFilters,amountQ]);
   const{sorted,key,dir,onSort}=useSort(filtered,'cliente',1);
   const total=useMemo(()=>filtered.reduce((s,r)=>s+r.importe,0),[filtered]);
 
-  const cols=[
-    {k:'cliente',label:'Cliente',cls:'col-cliente',filter:h(ColumnFilter,{options:uniqueClientes,selected:filtroCliente,onChange:setFiltroCliente})},
-    {k:'codigo',label:'Código',cls:'col-txt',filter:h(ColumnFilter,{options:uniqueCodigos,selected:filtroCodigo,onChange:setFiltroCodigo})},
-    {k:'numero',label:'Número',cls:'col-txt'},
-    {k:'descripcion',label:'Artículo / Descripción',cls:'col-txt'},
-    {k:'importe',label:'Importe + IVA (USD)',cls:'col-num col-importe'},
-    {k:'fecha',label:'Fecha',cls:'col-num'},
-    {k:'vencimientoOrigen',label:'Fecha Vto. Origen',cls:'col-num'},
-    {k:'observaciones',label:'Observaciones',cls:'col-txt'},
-  ];
-  const activeFilterCount=(filtroCliente!==null?1:0)+(filtroCodigo!==null?1:0);
+  const cols=COLS_DEF.map(c=>({
+    ...c,
+    filter: c.type==='amount'
+      ? h(AmountFilter,{value:amountQ,onChange:setAmountQ})
+      : h(ColumnFilter,{options:uniqueValues[c.k]||[],selected:colFilters[c.k]??null,onChange:v=>setColFilter(c.k,v)})
+  }));
+  const activeFilterCount=Object.values(colFilters).filter(v=>v!=null).length+(amountQ.trim()!==''?1:0);
 
   return h(React.Fragment,{},
     h('div',{className:'toolbar'},
       h('div',{className:'toolbar-left'},
         h('span',{style:{fontSize:'.8rem',color:'var(--gray-600)'}},filtered.length+' de '+rows.length+' registros'),
-        activeFilterCount>0&&h('button',{className:'filter-chip active',onClick:()=>{setFiltroCliente(null);setFiltroCodigo(null);}},
+        activeFilterCount>0&&h('button',{className:'filter-chip active',onClick:()=>{setColFilters({});setAmountQ('');}},
           activeFilterCount+' filtro'+(activeFilterCount>1?'s':'')+' activo'+(activeFilterCount>1?'s':'')+' ✕')
       ),
       h('div',{className:'toolbar-right'},
@@ -455,7 +502,7 @@ function App(){
         h('div',{className:'legend-bar'},
           h('span',{className:'leg'},'IVA aplicado: Fertilizante 10,5% · Agroquímico / Otros 21% · Importe ya incluye IVA'),
           h('span',{className:'leg'},'Pedidos = códigos PED, PEDA, PDD, PEDTER, PEDCYO · Remitos = REM, REMM, REMTER, REMCYO, REMMTE'),
-          h('span',{className:'leg'},'Clic en el ▾ de Cliente o Código para filtrar por valores puntuales · Clic en el nombre de columna para ordenar'),
+          h('span',{className:'leg'},'Clic en el ▾ de cada columna para filtrar por valores (o buscar un importe puntual) · Clic en el nombre de columna para ordenar'),
         )
       ),
     ),
