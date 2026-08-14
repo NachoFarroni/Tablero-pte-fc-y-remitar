@@ -196,6 +196,7 @@ function num(v){
 function findCol(hdr,cands){for(const c of cands){const re=new RegExp(c,'i');const i=hdr.findIndex(x=>re.test((x||'').toString().trim()));if(i>=0)return i;}return -1;}
 function sheetToRows(wb){const ws=wb.Sheets[wb.SheetNames[0]];return XLSX.utils.sheet_to_json(ws,{header:1,defval:null});}
 function fmtUSD(v){if(Math.abs(v)<0.005)return '—';return '$'+Math.abs(v).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function fmtNum(v){if(v===null||v===undefined)return '—';return Number(v).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});}
 
 const DEDUP_MAP={
   'Agrotecnología y Servicios S.A.':'AGROTECNOLOGIA Y SERVICIOS SA',
@@ -237,6 +238,8 @@ function parseNegocios(wb){
   const cArt=findCol(hdr,['Artículo','Articulo']);
   const cDesc=findCol(hdr,['^Descripción$','^Descripcion$']);
   const cI=findCol(hdr,['IMPORTE','Importe','Monto']);
+  const cPrecio=findCol(hdr,['Precio Unitario','Precio.*Unitario','^Precio$']);
+  const cCantPend=findCol(hdr,['CANTIDAD_PENDIENTE','Cantidad.*Pendiente']);
   const cR=findCol(hdr,['DESCIPCION_RUBRO','DESCRIPCION_RUBRO','Rubro']);
   const cObs=findCol(hdr,['Observaciones']);
   const cFvto=findCol(hdr,['FECHA_VENCIMIENTO_ORIGEN','Vencimiento.*Origen']);
@@ -258,6 +261,8 @@ function parseNegocios(wb){
       articulo:(cArt>=0?r[cArt]:'')||'',
       descripcion:(cDesc>=0?r[cDesc]:'')||'',
       rubro,
+      precio:num(cPrecio>=0?r[cPrecio]:0),
+      cantidadPendiente:num(cCantPend>=0?r[cCantPend]:0),
       importe:importeConIva,
       vencimientoOrigen:cFvto>=0?r[cFvto]:null,
       observaciones:(cObs>=0?r[cObs]:'')||'',
@@ -356,12 +361,14 @@ function exportToExcel(rows,filename){
   const data=rows.map(r=>({
     'Cliente':r.cliente,'Código':r.codigo,'Número':r.numero,
     'Artículo / Descripción':r.descripcion||r.articulo||'',
+    'Cantidad Pte.':Number(r.cantidadPendiente.toFixed(2)),
+    'Precio':Number(r.precio.toFixed(2)),
     'Importe + IVA (USD)':Number(r.importe.toFixed(2)),
     'Fecha':fmtDate(r.fecha),'Fecha Vto. Origen':fmtDate(r.vencimientoOrigen),
     'Observaciones':r.observaciones||'',
   }));
   const ws=XLSX.utils.json_to_sheet(data);
-  ws['!cols']=[{wch:32},{wch:12},{wch:10},{wch:34},{wch:16},{wch:12},{wch:16},{wch:34}];
+  ws['!cols']=[{wch:32},{wch:12},{wch:10},{wch:34},{wch:12},{wch:12},{wch:16},{wch:12},{wch:16},{wch:34}];
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,filename.slice(0,31));
   XLSX.writeFile(wb,filename+'.xlsx');
@@ -414,6 +421,8 @@ const COLS_DEF=[
   {k:'numero',label:'Número',cls:'col-txt',type:'checkbox',val:r=>String(r.numero||'—'),render:r=>r.numero||'—'},
   {k:'descripcion',label:'Artículo / Descripción',cls:'col-txt',type:'checkbox',val:r=>r.descripcion||r.articulo||'—',tdCls:'td-desc',
     render:r=>r.descripcion||r.articulo||'—'},
+  {k:'cantidadPendiente',label:'Cantidad Pte.',cls:'col-num',type:'amount',val:r=>fmtNum(r.cantidadPendiente),tdCls:'col-num',render:r=>fmtNum(r.cantidadPendiente)},
+  {k:'precio',label:'Precio',cls:'col-num',type:'amount',val:r=>fmtUSD(r.precio),tdCls:'col-num',render:r=>fmtUSD(r.precio)},
   {k:'importe',label:'Importe + IVA (USD)',cls:'col-num col-importe',type:'amount',val:r=>fmtUSD(r.importe),tdCls:'col-num col-importe',
     render:r=>fmtUSD(r.importe)},
   {k:'fecha',label:'Fecha',cls:'col-num',type:'daterange',val:r=>fmtDate(r.fecha),tdCls:'col-num',render:r=>fmtDate(r.fecha)},
@@ -450,11 +459,11 @@ function NegociosTable({rows,tipo,onDetail}){
   const[search,setSearch]=useState('');
   const[colFilters,setColFilters]=useState({});          // key -> Set|null (columnas checkbox)
   const[dateFilters,setDateFilters]=useState({});        // key -> {from,to} (columnas fecha)
-  const[amountQ,setAmountQ]=useState('');                // texto libre para Importe
+  const[amountFilters,setAmountFilters]=useState({});    // key -> texto libre (columnas numéricas)
   const[colVisible,setColVisible]=useState({});          // key -> false para ocultar
   const[vista,setVista]=useState('detalle');             // 'detalle' | 'resumen'
 
-  useEffect(()=>{setColFilters({});setDateFilters({});setAmountQ('');setSearch('');},[tipo]);
+  useEffect(()=>{setColFilters({});setDateFilters({});setAmountFilters({});setSearch('');},[tipo]);
 
   const uniqueValues=useMemo(()=>{
     const map={};
@@ -464,11 +473,11 @@ function NegociosTable({rows,tipo,onDetail}){
 
   const setColFilter=(k,v)=>setColFilters(prev=>({...prev,[k]:v}));
   const setDateFilter=(k,v)=>setDateFilters(prev=>({...prev,[k]:v}));
+  const setAmountFilter=(k,v)=>setAmountFilters(prev=>({...prev,[k]:v}));
   const toggleColVisible=(k,val)=>setColVisible(prev=>({...prev,[k]:val}));
 
   const filtered=useMemo(()=>{
     const q=search.trim().toLowerCase();
-    const aq=amountQ.trim().toLowerCase().replace(/\s/g,'');
     return rows.filter(r=>{
       for(const c of COLS_DEF){
         if(c.type==='checkbox'){
@@ -482,14 +491,16 @@ function NegociosTable({rows,tipo,onDetail}){
             if(rng.from&&d<new Date(rng.from+'T00:00:00'))return false;
             if(rng.to&&d>new Date(rng.to+'T23:59:59'))return false;
           }
+        }else if(c.type==='amount'){
+          const aq=(amountFilters[c.k]||'').trim().toLowerCase().replace(/\s/g,'');
+          if(aq&&!c.val(r).toLowerCase().replace(/\s/g,'').includes(aq))return false;
         }
       }
-      if(aq&&!fmtUSD(r.importe).toLowerCase().replace(/\s/g,'').includes(aq))return false;
       if(!q)return true;
       return r.cliente.toLowerCase().includes(q)||r.codigo.toLowerCase().includes(q)||String(r.numero).toLowerCase().includes(q)||
         (r.articulo||'').toLowerCase().includes(q)||(r.descripcion||'').toLowerCase().includes(q)||(r.observaciones||'').toLowerCase().includes(q);
     });
-  },[rows,search,colFilters,dateFilters,amountQ]);
+  },[rows,search,colFilters,dateFilters,amountFilters]);
   const{sorted,key,dir,onSort}=useSort(filtered,'cliente',1);
   const total=useMemo(()=>filtered.reduce((s,r)=>s+r.importe,0),[filtered]);
 
@@ -505,13 +516,13 @@ function NegociosTable({rows,tipo,onDetail}){
 
   const cols=COLS_DEF.map(c=>({
     ...c,
-    filter: c.type==='amount' ? h(AmountFilter,{value:amountQ,onChange:setAmountQ})
+    filter: c.type==='amount' ? h(AmountFilter,{value:amountFilters[c.k]||'',onChange:v=>setAmountFilter(c.k,v)})
       : c.type==='daterange' ? h(DateRangeFilter,{value:dateFilters[c.k]||{from:'',to:''},onChange:v=>setDateFilter(c.k,v)})
       : h(ColumnFilter,{options:uniqueValues[c.k]||[],selected:colFilters[c.k]??null,onChange:v=>setColFilter(c.k,v)})
   })).filter(c=>colVisible[c.k]!==false);
   const activeFilterCount=Object.values(colFilters).filter(v=>v!=null).length
     +Object.values(dateFilters).filter(v=>v&&(v.from||v.to)).length
-    +(amountQ.trim()!==''?1:0);
+    +Object.values(amountFilters).filter(v=>v&&v.trim()!=='').length;
 
   const tipoLabel=tipo==='pedido'?'pedidos':tipo==='remito'?'remitos':'registros';
 
@@ -522,7 +533,7 @@ function NegociosTable({rows,tipo,onDetail}){
           h('button',{className:vista==='detalle'?'active':'',onClick:()=>setVista('detalle')},'Detalle'),
           h('button',{className:vista==='resumen'?'active':'',onClick:()=>setVista('resumen')},'Por cliente')),
         h('span',{style:{fontSize:'.8rem',color:'var(--gray-600)'}},filtered.length+' de '+rows.length+' registros'),
-        activeFilterCount>0&&h('button',{className:'filter-chip active',onClick:()=>{setColFilters({});setDateFilters({});setAmountQ('');}},
+        activeFilterCount>0&&h('button',{className:'filter-chip active',onClick:()=>{setColFilters({});setDateFilters({});setAmountFilters({});}},
           activeFilterCount+' filtro'+(activeFilterCount>1?'s':'')+' activo'+(activeFilterCount>1?'s':'')+' ✕')
       ),
       h('div',{className:'toolbar-right'},
@@ -585,12 +596,13 @@ function DetailModal({cliente,pedidos,remitos,onClose}){
   const miniTable=(rows,emptyMsg)=>rows.length===0
     ? h('div',{className:'empty-section'},emptyMsg)
     : h('table',{className:'mini-table'},
-        h('thead',{},h('tr',{},h('th',{},'Código'),h('th',{},'Número'),h('th',{},'Artículo'),h('th',{},'Importe + IVA'),h('th',{},'Fecha vto. origen'))),
+        h('thead',{},h('tr',{},h('th',{},'Código'),h('th',{},'Número'),h('th',{},'Artículo'),h('th',{},'Cant. Pte.'),h('th',{},'Precio'),h('th',{},'Importe + IVA'),h('th',{},'Fecha vto. origen'))),
         h('tbody',{},rows.map((r,i)=>h('tr',{key:i},
           h('td',{},r.codigo),h('td',{},r.numero),h('td',{},r.descripcion||r.articulo||'—'),
+          h('td',{},fmtNum(r.cantidadPendiente)),h('td',{},fmtUSD(r.precio)),
           h('td',{},fmtUSD(r.importe)),h('td',{},fmtDate(r.vencimientoOrigen))
         ))),
-        h('tfoot',{},h('tr',{},h('td',{colSpan:3},'Subtotal'),h('td',{},fmtUSD(rows.reduce((s,r)=>s+r.importe,0))),h('td',{})))
+        h('tfoot',{},h('tr',{},h('td',{colSpan:5},'Subtotal'),h('td',{},fmtUSD(rows.reduce((s,r)=>s+r.importe,0))),h('td',{})))
       );
   return h('div',{className:'modal-overlay',onClick:onClose},
     h('div',{className:'modal-card',onClick:e=>e.stopPropagation()},
