@@ -197,6 +197,13 @@ function findCol(hdr,cands){for(const c of cands){const re=new RegExp(c,'i');con
 function sheetToRows(wb){const ws=wb.Sheets[wb.SheetNames[0]];return XLSX.utils.sheet_to_json(ws,{header:1,defval:null});}
 function fmtUSD(v){if(Math.abs(v)<0.005)return '—';return '$'+Math.abs(v).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});}
 function fmtNum(v){if(v===null||v===undefined)return '—';return Number(v).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});}
+// Precio unitario: se muestra tal cual figura en el Excel, sin redondear a 2 decimales
+// (ej: 0,795 no debe verse como 0,80). Se limpia a 6 decimales solo para evitar ruido de punto flotante.
+function fmtPrecio(v){
+  if(v===null||v===undefined)return '—';
+  const n=Math.round(Number(v)*1e6)/1e6;
+  return '$'+n.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:6});
+}
 
 const DEDUP_MAP={
   'Agrotecnología y Servicios S.A.':'AGROTECNOLOGIA Y SERVICIOS SA',
@@ -362,7 +369,7 @@ function exportToExcel(rows,filename){
     'Cliente':r.cliente,'Código':r.codigo,'Número':r.numero,
     'Artículo / Descripción':r.descripcion||r.articulo||'',
     'Cantidad Pte.':Number(r.cantidadPendiente.toFixed(2)),
-    'Precio':Number(r.precio.toFixed(2)),
+    'Precio':Math.round(r.precio*1e6)/1e6,
     'Importe + IVA (USD)':Number(r.importe.toFixed(2)),
     'Fecha':fmtDate(r.fecha),'Fecha Vto. Origen':fmtDate(r.vencimientoOrigen),
     'Observaciones':r.observaciones||'',
@@ -422,7 +429,7 @@ const COLS_DEF=[
   {k:'descripcion',label:'Artículo / Descripción',cls:'col-txt',type:'checkbox',val:r=>r.descripcion||r.articulo||'—',tdCls:'td-desc',
     render:r=>r.descripcion||r.articulo||'—'},
   {k:'cantidadPendiente',label:'Cantidad Pte.',cls:'col-num',type:'amount',val:r=>fmtNum(r.cantidadPendiente),tdCls:'col-num',render:r=>fmtNum(r.cantidadPendiente)},
-  {k:'precio',label:'Precio',cls:'col-num',type:'amount',val:r=>fmtUSD(r.precio),tdCls:'col-num',render:r=>fmtUSD(r.precio)},
+  {k:'precio',label:'Precio',cls:'col-num',type:'amount',val:r=>fmtPrecio(r.precio),tdCls:'col-num',render:r=>fmtPrecio(r.precio)},
   {k:'importe',label:'Importe + IVA (USD)',cls:'col-num col-importe',type:'amount',val:r=>fmtUSD(r.importe),tdCls:'col-num col-importe',
     render:r=>fmtUSD(r.importe)},
   {k:'fecha',label:'Fecha',cls:'col-num',type:'daterange',val:r=>fmtDate(r.fecha),tdCls:'col-num',render:r=>fmtDate(r.fecha)},
@@ -599,7 +606,7 @@ function DetailModal({cliente,pedidos,remitos,onClose}){
         h('thead',{},h('tr',{},h('th',{},'Código'),h('th',{},'Número'),h('th',{},'Artículo'),h('th',{},'Cant. Pte.'),h('th',{},'Precio'),h('th',{},'Importe + IVA'),h('th',{},'Fecha vto. origen'))),
         h('tbody',{},rows.map((r,i)=>h('tr',{key:i},
           h('td',{},r.codigo),h('td',{},r.numero),h('td',{},r.descripcion||r.articulo||'—'),
-          h('td',{},fmtNum(r.cantidadPendiente)),h('td',{},fmtUSD(r.precio)),
+          h('td',{},fmtNum(r.cantidadPendiente)),h('td',{},fmtPrecio(r.precio)),
           h('td',{},fmtUSD(r.importe)),h('td',{},fmtDate(r.vencimientoOrigen))
         ))),
         h('tfoot',{},h('tr',{},h('td',{colSpan:5},'Subtotal'),h('td',{},fmtUSD(rows.reduce((s,r)=>s+r.importe,0))),h('td',{})))
