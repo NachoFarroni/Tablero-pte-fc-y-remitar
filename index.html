@@ -77,6 +77,8 @@ body{font-family:var(--font-sans);background:var(--gray-50);color:var(--gray-800
 .tab.active{background:var(--white);color:var(--navy);box-shadow:var(--shadow)}
 .tab-badge{font-size:.66rem;background:var(--sky);color:var(--blue);padding:1px 6px;border-radius:20px;font-weight:700}
 .tab.active .tab-badge{background:var(--blue);color:var(--white)}
+.tab-badge-amber{background:var(--amber);color:var(--white)!important}
+.aviso-banner{background:var(--amber-light);border:1px solid #fde68a;border-radius:var(--radius);color:var(--amber-dark);padding:9px 14px;font-size:.8rem;margin-bottom:12px}
 .search-wrap{position:relative;display:flex;align-items:center}
 .search-icon{position:absolute;left:9px;font-size:.8rem;pointer-events:none}
 .search-input{border:1px solid var(--gray-200);border-radius:var(--radius);padding:7px 28px;font-family:var(--font-sans);font-size:.8rem;width:220px;background:var(--white)}
@@ -259,19 +261,27 @@ function parseNegocios(wb){
     const importeConIva=num(cI>=0?r[cI]:0)*(1+iva);
     const codigo=(cCod>=0?r[cCod]:'')||'';
     const numero=(cNro>=0?r[cNro]:'')||'';
+    const cliente=canonical(r[cC]);
+    const articulo=(cArt>=0?r[cArt]:'')||'';
+    const vencimientoOrigen=cFvto>=0?r[cFvto]:null;
+    // Id "de negocio" (no por posición): cliente+código+número+artículo+importe+fecha vto. origen.
+    // Así el estado marcado en "Cuenta y orden" se mantiene ligado al mismo remito aunque el
+    // archivo cambie de una carga a otra (remitos facturados que desaparecen, nuevos que aparecen).
+    const id=[cliente,codigo,numero,articulo,importeConIva.toFixed(2),fmtDate(vencimientoOrigen)].join('|');
     out.push({
-      cliente:canonical(r[cC]),
+      id,
+      cliente,
       codigo, numero,
       comprobante:codigo&&numero?codigo+' '+numero:(codigo||numero||'—'),
       tipo:tipoComprobante(codigo),
       fecha:cFecha>=0?r[cFecha]:null,
-      articulo:(cArt>=0?r[cArt]:'')||'',
+      articulo,
       descripcion:(cDesc>=0?r[cDesc]:'')||'',
       rubro,
       precio:num(cPrecio>=0?r[cPrecio]:0),
       cantidadPendiente:num(cCantPend>=0?r[cCantPend]:0),
       importe:importeConIva,
-      vencimientoOrigen:cFvto>=0?r[cFvto]:null,
+      vencimientoOrigen,
       observaciones:(cObs>=0?r[cObs]:'')||'',
     });
   }
@@ -314,6 +324,20 @@ function useSort(rows,defaultKey,defaultDir){
     return arr;
   },[rows,key,dir]);
   return{sorted,key,dir,onSort};
+}
+
+const ESTADO_OPTIONS=['Pendiente pedir','Liquidación solicitada','Liquidación recibida'];
+const ESTADO_COLORS={
+  'Pendiente pedir':{bg:'#fef2f2',fg:'#991b1b'},
+  'Liquidación solicitada':{bg:'#fffbeb',fg:'#92400e'},
+  'Liquidación recibida':{bg:'#f0fdf4',fg:'#166534'},
+};
+function EstadoSelect({value,onChange}){
+  const val=value||ESTADO_OPTIONS[0];
+  const c=ESTADO_COLORS[val];
+  return h('select',{value:val,onClick:e=>e.stopPropagation(),onChange:e=>onChange(e.target.value),
+    style:{background:c.bg,color:c.fg,border:'none',borderRadius:'10px',padding:'3px 8px',fontSize:'.7rem',fontWeight:700,fontFamily:'inherit',cursor:'pointer'}},
+    ESTADO_OPTIONS.map(o=>h('option',{key:o,value:o},o)));
 }
 
 // Buscador simple para columnas numéricas (Importe + IVA): no tiene sentido un checklist
@@ -462,7 +486,7 @@ function ColToggle({cols,visible,onChange}){
   );
 }
 
-function NegociosTable({rows,tipo,onDetail}){
+function NegociosTable({rows,tipo,onDetail,estados,onEstadoChange}){
   const[search,setSearch]=useState('');
   const[colFilters,setColFilters]=useState({});          // key -> Set|null (columnas checkbox)
   const[dateFilters,setDateFilters]=useState({});        // key -> {from,to} (columnas fecha)
@@ -503,11 +527,15 @@ function NegociosTable({rows,tipo,onDetail}){
           if(aq&&!c.val(r).toLowerCase().replace(/\s/g,'').includes(aq))return false;
         }
       }
+      if(tipo==='cuentaOrden'){
+        const selEstado=colFilters['estado'];
+        if(selEstado!=null&&!selEstado.has(estados[r.id]||ESTADO_OPTIONS[0]))return false;
+      }
       if(!q)return true;
       return r.cliente.toLowerCase().includes(q)||r.codigo.toLowerCase().includes(q)||String(r.numero).toLowerCase().includes(q)||
         (r.articulo||'').toLowerCase().includes(q)||(r.descripcion||'').toLowerCase().includes(q)||(r.observaciones||'').toLowerCase().includes(q);
     });
-  },[rows,search,colFilters,dateFilters,amountFilters]);
+  },[rows,search,colFilters,dateFilters,amountFilters,tipo,estados]);
   const{sorted,key,dir,onSort}=useSort(filtered,'cliente',1);
   const total=useMemo(()=>filtered.reduce((s,r)=>s+r.importe,0),[filtered]);
 
@@ -527,11 +555,18 @@ function NegociosTable({rows,tipo,onDetail}){
       : c.type==='daterange' ? h(DateRangeFilter,{value:dateFilters[c.k]||{from:'',to:''},onChange:v=>setDateFilter(c.k,v)})
       : h(ColumnFilter,{options:uniqueValues[c.k]||[],selected:colFilters[c.k]??null,onChange:v=>setColFilter(c.k,v)})
   })).filter(c=>colVisible[c.k]!==false);
+  if(tipo==='cuentaOrden'){
+    cols.push({
+      k:'estado',label:'Estado',cls:'col-txt',tdCls:'',
+      render:r=>h(EstadoSelect,{value:estados[r.id],onChange:v=>onEstadoChange(r.id,v)}),
+      filter:h(ColumnFilter,{options:ESTADO_OPTIONS,selected:colFilters['estado']??null,onChange:v=>setColFilter('estado',v)}),
+    });
+  }
   const activeFilterCount=Object.values(colFilters).filter(v=>v!=null).length
     +Object.values(dateFilters).filter(v=>v&&(v.from||v.to)).length
     +Object.values(amountFilters).filter(v=>v&&v.trim()!=='').length;
 
-  const tipoLabel=tipo==='pedido'?'pedidos':tipo==='remito'?'remitos':'registros';
+  const tipoLabel=tipo==='pedido'?'pedidos':tipo==='remito'?'remitos':tipo==='cuentaOrden'?'REMCYO':'registros';
 
   return h(React.Fragment,{},
     h('div',{className:'toolbar'},
@@ -636,6 +671,14 @@ function App(){
   const[rows,setRows]=useState(null);
   const[tab,setTab]=useState('pedidos');
   const[detailCliente,setDetailCliente]=useState(null);
+  const[estados,setEstados]=useState(()=>{
+    try{return JSON.parse(localStorage.getItem('cuentaOrdenEstados')||'{}');}catch(e){return{};}
+  });
+  const onEstadoChange=(id,val)=>setEstados(prev=>{
+    const next={...prev,[id]:val};
+    try{localStorage.setItem('cuentaOrdenEstados',JSON.stringify(next));}catch(e){}
+    return next;
+  });
 
   const readExcel=file=>new Promise((res,rej)=>{
     const reader=new FileReader();
@@ -651,6 +694,15 @@ function App(){
       const parsed=parseNegocios(wb);
       if(!parsed.length)throw new Error('El Excel no tiene filas reconocibles. Revisá que sea el archivo "Negocios ptes de facturar".');
       setRows(parsed);
+      // Limpieza: descarta del historial de estados los remitos que ya no están en el archivo
+      // (se facturaron y salieron de "ptes de facturar"), para no acumular basura con el tiempo.
+      const idsVigentes=new Set(parsed.map(r=>r.id));
+      setEstados(prev=>{
+        const next={};
+        Object.keys(prev).forEach(id=>{if(idsVigentes.has(id))next[id]=prev[id];});
+        try{localStorage.setItem('cuentaOrdenEstados',JSON.stringify(next));}catch(e){}
+        return next;
+      });
     }catch(e){setError(e.message||'Error al procesar el archivo');}
     finally{setLoading(false);}
   };
@@ -658,8 +710,9 @@ function App(){
   const pedidos=useMemo(()=>rows?rows.filter(r=>r.tipo==='pedido'):[],[rows]);
   const remitos=useMemo(()=>rows?rows.filter(r=>r.tipo==='remito'):[],[rows]);
   const otros=useMemo(()=>rows?rows.filter(r=>r.tipo==='otro'):[],[rows]);
+  const cuentaOrden=useMemo(()=>rows?rows.filter(r=>r.codigo==='REMCYO'):[],[rows]);
 
-  const current=tab==='pedidos'?pedidos:tab==='remitos'?remitos:otros;
+  const current=tab==='pedidos'?pedidos:tab==='remitos'?remitos:tab==='cuentaOrden'?cuentaOrden:otros;
 
   return h('div',{className:'app'},
     h('header',{className:'app-header'},
@@ -704,9 +757,12 @@ function App(){
         h('div',{className:'tabs',style:{marginBottom:'14px'}},
           h('button',{className:'tab'+(tab==='pedidos'?' active':''),onClick:()=>setTab('pedidos')},'📄 Pedidos',h('span',{className:'tab-badge'},pedidos.length)),
           h('button',{className:'tab'+(tab==='remitos'?' active':''),onClick:()=>setTab('remitos')},'🚚 Remitos',h('span',{className:'tab-badge'},remitos.length)),
+          h('button',{className:'tab'+(tab==='cuentaOrden'?' active':''),onClick:()=>setTab('cuentaOrden')},'📋 Cuenta y orden',h('span',{className:'tab-badge tab-badge-amber'},cuentaOrden.length)),
           otros.length>0&&h('button',{className:'tab'+(tab==='otros'?' active':''),onClick:()=>setTab('otros')},'⚠ Sin clasificar',h('span',{className:'tab-badge'},otros.length)),
         ),
-        h(NegociosTable,{rows:current,tipo:tab,onDetail:setDetailCliente}),
+        tab==='cuentaOrden'&&h('div',{className:'aviso-banner'},
+          '⚠ Estos remitos (REMCYO) se gestionan directo con el cliente — hay que pedirle la liquidación antes de poder facturar. Marcá el estado de cada uno a la derecha.'),
+        h(NegociosTable,{rows:current,tipo:tab,onDetail:setDetailCliente,estados,onEstadoChange}),
         h('div',{className:'legend-bar'},
           h('span',{className:'leg'},'IVA aplicado: Fertilizante 10,5% · Agroquímico / Otros 21% · Importe ya incluye IVA'),
           h('span',{className:'leg'},'Pedidos = códigos PED, PEDA, PDD, PEDTER, PEDCYO · Remitos = REM, REMM, REMTER, REMCYO, REMMTE'),
